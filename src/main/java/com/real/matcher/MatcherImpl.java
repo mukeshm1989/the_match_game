@@ -2,7 +2,6 @@ package com.real.matcher;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import com.real.dto.ActorDetail;
 import com.real.dto.ExternalMovieDetails;
 import com.real.dto.InternalMovieDetail;
@@ -18,16 +17,10 @@ public class MatcherImpl implements Matcher {
   public MatcherImpl(CsvStream movieDb, CsvStream actorAndDirectorDb) {
     LOGGER.info("importing database");
     // TODO implement me
-
     // Assuming files are valid, so skipping the step to validate file.
 
-    List<ActorDetail> actorDetailList = new ArrayList<>();
-    Stream<String> moviedetailsStream = movieDb.getDataRows();
-    Map<String, Integer> movieMapIndex = getMapIndex(movieDb.getHeaderRow());
-    Stream<String>  actorAndDirecotorDetailsStream = actorAndDirectorDb.getDataRows();
-    List<InternalMovieDetail> movieDetailsList= new ArrayList<>();
-    readMovieDB(moviedetailsStream, movieMapIndex, movieDetailsList);
-    readActorAndDirectorDb(actorAndDirectorDb, actorAndDirecotorDetailsStream, actorDetailList);
+    List<InternalMovieDetail> movieDetailsList = readMovieDB(movieDb);
+    List<ActorDetail> actorDetailList= readActorAndDirectorDb(actorAndDirectorDb);
     readActorsAndDirectorsDetailsAndMapToMovieId(actorDetailList, movieDetailsList);
     LOGGER.info("database imported");
   }
@@ -46,16 +39,18 @@ public class MatcherImpl implements Matcher {
             actors.add(actorDetail.getName());
           }
         });
-       movieDetail.setActors(actors);
+        movieDetail.setActors(actors);
       }
       internalMovieDB.add(movieDetail);
     }
-      LOGGER.info("reading amd mapping data to movie id has been completed for actors and director details");
+    LOGGER.info("reading amd mapping data to movie id has been completed for actors and director details");
   }
 
-  private void readActorAndDirectorDb(CsvStream actorAndDirectorDb, Stream<String> actorAndDirecotorDetailsStream, List<ActorDetail> actorDetailList) {
+  private List<ActorDetail> readActorAndDirectorDb(CsvStream actorAndDirectorDb) {
     LOGGER.info("reading data for actors and director details ");
     Map<String, Integer> actorDirectorMapIndex = getMapIndex(actorAndDirectorDb.getHeaderRow());
+    Stream<String> actorAndDirecotorDetailsStream = actorAndDirectorDb.getDataRows();
+    List<ActorDetail> actorDetailList = new ArrayList<>();
     actorAndDirecotorDetailsStream.forEach(actor->{
       String [] movieArr=actor.split(REGEX);
       ActorDetail actorDetail = new ActorDetail();
@@ -64,19 +59,25 @@ public class MatcherImpl implements Matcher {
       actorDetail.setRole(movieArr[actorDirectorMapIndex.get(ROLE)]);
       actorDetailList.add(actorDetail);
     });
-      LOGGER.info("reading data for actors and director details has been completed");
+    LOGGER.info("reading data for actors and director details has been completed");
+    return actorDetailList;
   }
 
-  private static void readMovieDB(Stream<String> moviedetailsStream, Map<String, Integer> movieMapIndex, List<InternalMovieDetail> movieDetailsList) {
+  private  List<InternalMovieDetail> readMovieDB(CsvStream movieDb) {
     LOGGER.info("reading movie data");
+    List<InternalMovieDetail> movieDetailsList = new ArrayList<>();
+    Map<String, Integer> movieMapIndex = getMapIndex(movieDb.getHeaderRow());
+    Stream<String> moviedetailsStream =movieDb.getDataRows();
     moviedetailsStream.forEach(x->{
       String [] movieArr=x.split(REGEX);
       InternalMovieDetail internalMovieDetail = new InternalMovieDetail();
-         internalMovieDetail.setMovieId(movieArr[movieMapIndex.get(ID)]);
-         internalMovieDetail.setTitle(movieArr[movieMapIndex.get(TITLE)]);
-         movieDetailsList.add(internalMovieDetail);
+      internalMovieDetail.setMovieId(movieArr[movieMapIndex.get(ID)]);
+      internalMovieDetail.setTitle(movieArr[movieMapIndex.get(TITLE)]);
+      movieDetailsList.add(internalMovieDetail);
     });
-      LOGGER.info("reading movie data is completed ");
+
+    LOGGER.info("reading movie data is completed ");
+    return  movieDetailsList;
   }
 
   @Override
@@ -94,7 +95,7 @@ public class MatcherImpl implements Matcher {
               movieArr[externalMapIndex.get(XBOX_LIVE_URL)]);
       readExternalDB(isNotNull, movieArr, externalMapIndex, externalMovieDetailsList);
     });
-      LOGGER.info("Filtering for external data internal data is completed");
+    LOGGER.info("Filtering for external data internal data is completed");
     return getMatchIdFromInternalAndExternalData(internalMovieDB,externalMovieDetailsList);
   }
 
@@ -111,7 +112,7 @@ public class MatcherImpl implements Matcher {
       externalMovieDetail.setXboxLiveURL(movieArr[externalMapIndex.get(XBOX_LIVE_URL)]);
       externalMovieDetailsList.add(externalMovieDetail);
     }
-      LOGGER.info("Reading external data is completed ");
+    LOGGER.info("Reading external data is completed ");
   }
 
   public boolean validateNullValue(String mediaId,String title,String mediaType,String actors,String director,String id) {
@@ -130,7 +131,7 @@ public class MatcherImpl implements Matcher {
     LOGGER.info("Get all matching record from internal and external data");
     Set<IdMapping> idMappingList = new HashSet<>();
     filterMatchingDataBasedOnTitleDirectorsAndActors(internalMovieDB, externalMovieDetailsList, idMappingList);
-      LOGGER.info("Get all matching record from internal and external data is completed ");
+    LOGGER.info("Get all matching record from internal and external data is completed ");
     return new ArrayList<>(idMappingList);
   }
 
@@ -148,7 +149,7 @@ public class MatcherImpl implements Matcher {
       });
       return idMappingList;
     }).collect(Collectors.toList());
-      LOGGER.info("Filtering data based on the actors, directors and title is completed ");
+    LOGGER.info("Filtering data based on the actors, directors and title is completed ");
   }
 
   private Map<String,Integer> getMapIndex(String headerRow){
@@ -162,6 +163,3 @@ public class MatcherImpl implements Matcher {
     return headerMap;
   }
 }
-
-
-
